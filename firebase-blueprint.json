@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Public profile for the user",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["createdAt"]
+    },
+    "UserPrivate": {
+      "title": "User Private Data",
+      "description": "Sensitive user data like phone number",
+      "type": "object",
+      "properties": {
+        "phoneNumber": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["phoneNumber"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Record of a sale or expense",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["sale", "expense"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "note": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "amount", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Public user profile"
+    },
+    "/users/{userId}/private/info": {
+      "schema": "UserPrivate",
+      "description": "Private user information"
+    },
+    "/users/{userId}/transactions/{txnId}": {
+      "schema": "Transaction",
+      "description": "User transactions"
+    }
+  }
+}
