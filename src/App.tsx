@@ -20,6 +20,8 @@ const AppContent: React.FC = () => {
         setAuthError("Popup was blocked by your browser. Please allow popups for this site or try logging in again.");
       } else if (err.code === 'auth/popup-closed-by-user') {
         setAuthError("Login window was closed before finishing. Please try again.");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setAuthError("This domain is not authorized in your Firebase console. Please add 'europe-west2.run.app' or the specific app URLs to your Authorized Domains in the Firebase Console (Authentication > Settings > Authorized domains).");
       } else {
         setAuthError(err.message || "Google login failed.");
       }
@@ -33,6 +35,8 @@ const AppContent: React.FC = () => {
     } catch (err: any) {
       if (err.code === 'auth/admin-restricted-operation') {
         setAuthError("Anonymous sign-in is not enabled. Please enable it in the Firebase Console (Authentication > Sign-in method).");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setAuthError("This domain is not authorized. Please add the app URLs to your Authorized Domains in the Firebase Console.");
       } else {
         setAuthError(err.message || "Guest log-in failed.");
       }
