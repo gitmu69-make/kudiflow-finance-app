@@ -26,26 +26,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Test connection and ensure user profile exists
         try {
           const userRef = doc(db, 'users', user.uid);
+          // Only attempt to create profile if we don't have it in cache
           const userDoc = await getDocFromCache(userRef).catch(() => null);
           
           if (!userDoc || !userDoc.exists()) {
-            await setDoc(userRef, {
-              displayName: user.displayName,
+            const profile: any = {
               createdAt: serverTimestamp()
-            }, { merge: true }).catch(err => handleFirestoreError(err, 'create', `users/${user.uid}`));
+            };
+            if (user.displayName) profile.displayName = user.displayName;
+            
+            await setDoc(userRef, profile, { merge: true }).catch(err => {
+              // Ignore failure for guest users if they already exist or if rules block initial creation
+              console.warn("Could not create/update user profile:", err.message);
+            });
           }
-          
-          // CRITICAL: Test connection to Firestore
-          await getDocFromServer(doc(db, 'test', 'connection')).catch(() => {
-             // Ignore test connection failure if purely because collection doesn't exist, 
-             // but handle if unauthorized or offline
-          });
-          
         } catch (error) {
-          console.error("Firebase connection test failed", error);
+          console.error("Auth sync error:", error);
         }
       }
       setUser(user);

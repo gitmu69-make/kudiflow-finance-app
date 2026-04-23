@@ -11,6 +11,21 @@ const AppContent: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'add'>('dashboard');
   const [authError, setAuthError] = useState<string | null>(null);
 
+  const handleGoogleSignIn = async () => {
+    setAuthError(null);
+    try {
+      await signIn();
+    } catch (err: any) {
+      if (err.code === 'auth/popup-blocked') {
+        setAuthError("Popup was blocked by your browser. Please allow popups for this site or try logging in again.");
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setAuthError("Login window was closed before finishing. Please try again.");
+      } else {
+        setAuthError(err.message || "Google login failed.");
+      }
+    }
+  };
+
   const handleGuestSignIn = async () => {
     setAuthError(null);
     try {
@@ -55,8 +70,8 @@ const AppContent: React.FC = () => {
         
         <div className="w-full max-w-sm space-y-6">
           <button 
-            onClick={() => signIn()}
-            className="btn-primary w-full flex items-center justify-center gap-4 py-5 text-xl font-semibold"
+            onClick={handleGoogleSignIn}
+            className="btn-primary w-full flex items-center justify-center gap-4 py-5 text-xl font-bold"
           >
             <Smartphone className="w-6 h-6" />
             Get Started
