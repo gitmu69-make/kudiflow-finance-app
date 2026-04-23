@@ -1,54 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 0. Global Safety Net
     match /{document=**} {
       allow read, write: if false;
     }
 
+    // Phase 3: Primitive Definition
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
-    function isValidUser(data) {
+    // Validation Helpers
+    function isValidUserProfile(data) {
       return data.keys().hasAll(['createdAt']) &&
              data.keys().size() <= 2 &&
              data.createdAt == request.time &&
-             (data.keys().hasOnly(['createdAt', 'displayName']) ? 
-               (!data.keys().contains('displayName') || (data.displayName is string && data.displayName.size() <= 100)) : true);
+             (!data.keys().contains('displayName') || (data.displayName is string && data.displayName.size() <= 100));
     }
 
-    match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming()) && 
-                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName']);
-    }
-
-    match /users/{userId}/private/info {
-      allow get, write: if isOwner(userId);
-    }
-
-    function isValidTransaction(data) {
+    function isValidTransaction(data, ownerId) {
       return data.keys().hasAll(['userId', 'type', 'amount', 'timestamp']) &&
              data.keys().size() <= 6 &&
+             data.userId == ownerId &&
              data.userId == request.auth.uid &&
              data.type in ['sale', 'expense'] &&
              data.amount is number && data.amount > 0 &&
              data.timestamp == request.time &&
-             (data.keys().hasOnly(['userId', 'type', 'amount', 'timestamp', 'category', 'note']) ? 
-               ((!data.keys().contains('category') || (data.category is string && data.category.size() <= 64)) &&
-                (!data.keys().contains('note') || (data.note is string && data.note.size() <= 512))) : true);
+             (!data.keys().contains('category') || (data.category is string && data.category.size() <= 64)) &&
+             (!data.keys().contains('note') || (data.note is string && data.note.size() <= 512));
     }
 
-    match /users/{userId}/transactions/{txnId} {
-      allow list, get: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidId(txnId) && isValidTransaction(incoming());
-      allow update: if isOwner(userId) && isValidTransaction(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'note', 'type', 'timestamp']);
-      allow delete: if isOwner(userId);
+    // 1. User Profiles
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName']);
+
+      // 2. Transactions Subcollection
+      match /transactions/{txnId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(txnId) && isValidTransaction(incoming(), userId);
+        allow update: if isOwner(userId) && 
+                      isValidTransaction(incoming(), userId) &&
+                      incoming().userId == existing().userId &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'note', 'type', 'timestamp']);
+        allow delete: if isOwner(userId);
+      }
     }
   }
 }

@@ -1,52 +1,65 @@
 {
   "entities": {
-    "User": {
+    "UserProfile": {
       "title": "User Profile",
-      "description": "Public profile for the user",
+      "description": "User account information and settings.",
       "type": "object",
       "properties": {
-        "displayName": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the profile was created."
+        }
       },
       "required": ["createdAt"]
     },
-    "UserPrivate": {
-      "title": "User Private Data",
-      "description": "Sensitive user data like phone number",
-      "type": "object",
-      "properties": {
-        "phoneNumber": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["phoneNumber"]
-    },
     "Transaction": {
       "title": "Transaction",
-      "description": "Record of a sale or expense",
+      "description": "A record of income or expense.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "type": { "type": "string", "enum": ["sale", "expense"] },
-        "amount": { "type": "number" },
-        "category": { "type": "string" },
-        "note": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "userId": {
+          "type": "string",
+          "description": "UID of the user who owns this transaction."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["sale", "expense"],
+          "description": "The type of transaction."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary value in GHS."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category tag for the transaction."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional description."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the transaction occurred."
+        }
       },
       "required": ["userId", "type", "amount", "timestamp"]
     }
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": "User",
-      "description": "Public user profile"
+      "schema": "UserProfile",
+      "description": "Root user profile document."
     },
-    "/users/{userId}/private/info": {
-      "schema": "UserPrivate",
-      "description": "Private user information"
-    },
-    "/users/{userId}/transactions/{txnId}": {
+    "/users/{userId}/transactions/{transactionId}": {
       "schema": "Transaction",
-      "description": "User transactions"
+      "description": "Subcollection of transactions for a specific user."
     }
   }
 }
