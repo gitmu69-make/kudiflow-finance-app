@@ -1,5 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signInAnonymously,
+  signOut
+} from 'firebase/auth';
 import { 
   initializeFirestore, 
   persistentLocalCache, 
@@ -31,10 +37,27 @@ async function testConnection() {
 testConnection();
 
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+const googleProvider = new GoogleAuthProvider();
 
-export const signIn = () => signInWithPopup(auth, googleProvider);
-export const signInAsGuest = () => signInAnonymously(auth);
+export const signIn = async () => {
+  const currentAuth = getAuth();
+  if (!currentAuth) throw new Error("Firebase Auth not found");
+  const provider = new GoogleAuthProvider();
+  return signInWithPopup(currentAuth, provider);
+};
+
+export const signInAsGuest = async () => {
+  const currentAuth = getAuth();
+  if (!currentAuth) throw new Error("Firebase Auth not found");
+  return signInAnonymously(currentAuth);
+};
+
+export const logout = async () => {
+  const currentAuth = getAuth();
+  if (currentAuth) {
+    return signOut(currentAuth);
+  }
+};
 
 export interface Transaction {
   id?: string;

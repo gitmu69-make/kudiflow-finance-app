@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
-import { signIn, auth, signInAsGuest } from './firebase';
+import { signIn, auth, signInAsGuest, logout } from './firebase';
 import { Dashboard } from './components/Dashboard';
 import { TransactionForm } from './components/TransactionForm';
 import { BarChart3, Plus, LogOut, ArrowLeft, Smartphone, ShieldCheck, WifiOff, UserCircle } from 'lucide-react';
@@ -21,7 +21,8 @@ const AppContent: React.FC = () => {
       } else if (err.code === 'auth/popup-closed-by-user') {
         setAuthError("Login window was closed before finishing. Please try again.");
       } else if (err.code === 'auth/unauthorized-domain') {
-        setAuthError("This domain is not authorized in your Firebase console. Please add 'europe-west2.run.app' or the specific app URLs to your Authorized Domains in the Firebase Console (Authentication > Settings > Authorized domains).");
+        const currentDomain = window.location.hostname;
+        setAuthError(`Domain "${currentDomain}" is not authorized. Please go to your Firebase Console (Authentication > Settings > Authorized domains) and add "${currentDomain}" to the list.`);
       } else {
         setAuthError(err.message || "Google login failed.");
       }
@@ -36,7 +37,8 @@ const AppContent: React.FC = () => {
       if (err.code === 'auth/admin-restricted-operation') {
         setAuthError("Anonymous sign-in is not enabled. Please enable it in the Firebase Console (Authentication > Sign-in method).");
       } else if (err.code === 'auth/unauthorized-domain') {
-        setAuthError("This domain is not authorized. Please add the app URLs to your Authorized Domains in the Firebase Console.");
+        const currentDomain = window.location.hostname;
+        setAuthError(`Domain "${currentDomain}" is not authorized. Please add it to your Firebase Authorized Domains.`);
       } else {
         setAuthError(err.message || "Guest log-in failed.");
       }
@@ -139,23 +141,43 @@ const AppContent: React.FC = () => {
           <h1 className="font-bold text-2xl font-display text-[#F9F7F2]">{view === 'dashboard' ? 'KudiFlow' : 'Record Transaction'}</h1>
         </div>
         
-        <div className="flex items-center gap-3">
-          {user?.isAnonymous && (
-            <div className="bg-[#3D3935] px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-[#D1CDC3] border border-[#4A453F]">
-              Guest Mode
-            </div>
-          )}
+        <div className="flex items-center gap-4">
           {!isOnline && (
-            <div className="bg-amber-50 p-2 rounded-xl" title="Offline mode">
-              <WifiOff className="w-5 h-5 text-amber-600" />
+            <div className="bg-amber-900/20 p-2 rounded-xl" title="Offline mode">
+              <WifiOff className="w-5 h-5 text-amber-500" />
             </div>
           )}
-          <button 
-            onClick={() => auth.signOut()}
-            className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+          
+          <div className="flex items-center gap-2 pl-3 border-l border-[#3D3935]">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-bold text-[#F9F7F2] font-display uppercase leading-none">
+                {user?.isAnonymous ? 'Guest User' : (user?.displayName?.split(' ')[0] || 'User')}
+              </p>
+              <button 
+                onClick={() => logout()}
+                className="text-[8px] font-bold text-red-500 uppercase tracking-widest hover:text-red-400"
+              >
+                Sign Out
+              </button>
+            </div>
+            <div className="relative group">
+              <button 
+                onClick={() => logout()}
+                className="w-10 h-10 rounded-2xl overflow-hidden border-2 border-[#3D3935] hover:border-red-500/50 transition-all shadow-lg active:scale-95"
+              >
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full bg-[#3D3935] flex items-center justify-center text-[#F9F7F2] font-bold font-display">
+                    {user?.displayName?.[0] || user?.email?.[0] || '?'}
+                  </div>
+                )}
+              </button>
+              {user?.isAnonymous && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-[#1A1816]" title="Guest session" />
+              )}
+            </div>
+          </div>
         </div>
       </header>
 

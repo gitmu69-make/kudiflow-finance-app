@@ -28,8 +28,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user) {
         try {
           const userRef = doc(db, 'users', user.uid);
-          // Only attempt to create profile if we don't have it in cache
-          const userDoc = await getDocFromCache(userRef).catch(() => null);
+          // Check server for existence to be certain
+          const userDoc = await getDocFromServer(userRef).catch(() => null);
           
           if (!userDoc || !userDoc.exists()) {
             const profile: any = {
@@ -37,9 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             if (user.displayName) profile.displayName = user.displayName;
             
-            await setDoc(userRef, profile, { merge: true }).catch(err => {
-              // Ignore failure for guest users if they already exist or if rules block initial creation
-              console.warn("Could not create/update user profile:", err.message);
+            await setDoc(userRef, profile).catch(err => {
+              console.warn("Could not create user profile:", err.message);
             });
           }
         } catch (error) {
