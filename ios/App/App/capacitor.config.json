@@ -1,0 +1,6 @@
+{
+	"appId": "com.kudiflow.app",
+	"appName": "KudiFlow",
+	"webDir": "dist",
+	"packageClassList": []
+}
