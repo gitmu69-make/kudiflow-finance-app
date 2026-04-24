@@ -29,16 +29,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const userRef = doc(db, 'users', user.uid);
           // Check server for existence to be certain
-          const userDoc = await getDocFromServer(userRef).catch(() => null);
+          const userDoc = await getDocFromServer(userRef).catch(err => {
+            console.error("Failed to fetch user profile:", err);
+            return null;
+          });
           
-          if (!userDoc || !userDoc.exists()) {
+          if (userDoc && !userDoc.exists()) {
             const profile: any = {
               createdAt: serverTimestamp()
             };
             if (user.displayName) profile.displayName = user.displayName;
             
             await setDoc(userRef, profile).catch(err => {
-              console.warn("Could not create user profile:", err.message);
+              handleFirestoreError(err, 'write', userRef.path);
             });
           }
         } catch (error) {

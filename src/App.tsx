@@ -1,15 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { signIn, auth, signInAsGuest, logout } from './firebase';
 import { Dashboard } from './components/Dashboard';
 import { TransactionForm } from './components/TransactionForm';
-import { BarChart3, Plus, LogOut, ArrowLeft, Smartphone, ShieldCheck, WifiOff, UserCircle } from 'lucide-react';
+import { BarChart3, Plus, LogOut, ArrowLeft, Smartphone, ShieldCheck, WifiOff, UserCircle, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
 
 const AppContent: React.FC = () => {
   const { user, loading, isOnline } = useAuth();
   const [view, setView] = useState<'dashboard' | 'add'>('dashboard');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setAuthError(null);
@@ -75,6 +103,16 @@ const AppContent: React.FC = () => {
         </p>
         
         <div className="w-full max-w-sm space-y-6">
+          {installPrompt && (
+            <button 
+              onClick={handleInstall}
+              className="w-full flex items-center justify-center gap-4 py-4 px-6 rounded-[2rem] bg-indigo-600 text-white font-bold text-lg hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20"
+            >
+              <Download className="w-6 h-6" />
+              Install KudiFlow App
+            </button>
+          )}
+
           <button 
             onClick={handleGoogleSignIn}
             className="btn-primary w-full flex items-center justify-center gap-4 py-5 text-xl font-bold"
@@ -142,6 +180,16 @@ const AppContent: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-4">
+          {installPrompt && (
+            <button 
+              onClick={handleInstall}
+              className="hidden sm:flex items-center gap-2 bg-[#F9F7F2] text-[#1A1816] px-3 py-2 rounded-xl text-xs font-bold font-display hover:scale-105 transition-transform"
+            >
+              <Download className="w-4 h-4" />
+              INSTALL APP
+            </button>
+          )}
+
           {!isOnline && (
             <div className="bg-amber-900/20 p-2 rounded-xl" title="Offline mode">
               <WifiOff className="w-5 h-5 text-amber-500" />
