@@ -12,23 +12,45 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg'],
+        includeAssets: ['icon.svg', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
         manifest: {
           name: 'KudiFlow',
           short_name: 'KudiFlow',
           description: 'Intelligent Daily Business Flow Tracker',
           theme_color: '#1A1816',
+          background_color: '#1A1816',
+          display: 'standalone',
+          orientation: 'portrait',
           icons: [
-            {
-              src: 'icon.svg',
-              sizes: '512x512',
-              type: 'image/svg+xml'
-            },
             {
               src: 'icon.svg',
               sizes: '512x512',
               type: 'image/svg+xml',
               purpose: 'any maskable'
+            },
+            {
+              src: 'icon.svg',
+              sizes: '192x192',
+              type: 'image/svg+xml'
+            }
+          ]
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
             }
           ]
         }

@@ -26,11 +26,12 @@ export const db = initializeFirestore(app, {
 
 // CRITICAL: Connection test
 async function testConnection() {
+  if (!navigator.onLine) return;
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+    if (error instanceof Error && !error.message.includes('the client is offline')) {
+      console.warn("Firestore connection check failed:", error.message);
     }
   }
 }

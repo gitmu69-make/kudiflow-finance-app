@@ -12,6 +12,8 @@ export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({ sales: 0, expenses: 0, profit: 0, count: 0 });
   const [timeframe, setTimeframe] = useState<'today' | 'week' | 'month'>('today');
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
   useEffect(() => {
     if (!user) return;
 
@@ -31,6 +33,7 @@ export const Dashboard: React.FC = () => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      setIsSyncing(snapshot.metadata.hasPendingWrites);
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTxns(docs);
 
@@ -102,8 +105,17 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold font-display text-[#F9F7F2]">{format(new Date(), 'MMM d, yyyy')}</p>
-          <p className="text-[10px] text-[#6B6359] uppercase tracking-widest font-bold">SYSTEM ACTIVE</p>
+          {isSyncing ? (
+            <div className="flex flex-col items-end">
+              <p className="text-[10px] text-orange-400 font-bold uppercase tracking-widest animate-pulse">SYNCING DATA...</p>
+              <p className="text-sm font-bold font-display text-[#F9F7F2]">{format(new Date(), 'MMM d, yyyy')}</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-bold font-display text-[#F9F7F2]">{format(new Date(), 'MMM d, yyyy')}</p>
+              <p className="text-[10px] text-[#6B6359] uppercase tracking-widest font-bold">SYSTEM ACTIVE</p>
+            </>
+          )}
         </div>
       </div>
 
