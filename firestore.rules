@@ -6,9 +6,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Connection test document
+    match /test/connection {
+      allow read: if true;
+    }
+
     // Phase 3: Primitive Definition
     function isSignedIn() { return request.auth != null; }
-    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isVerified() { 
+      return isSignedIn() && (
+        request.auth.token.email_verified == true || 
+        request.auth.token.firebase.sign_in_provider == 'anonymous'
+      );
+    }
+    function isOwner(userId) { return isVerified() && request.auth.uid == userId; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
@@ -17,6 +28,7 @@ service cloud.firestore {
     function isValidUserProfile(data) {
       return data.keys().hasAll(['createdAt']) &&
              data.keys().size() <= 5 &&
+             data.createdAt == request.time &&
              (!data.keys().contains('displayName') || (data.displayName is string && data.displayName.size() <= 100));
     }
 
@@ -36,8 +48,10 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUserProfile(incoming());
-      allow update: if isOwner(userId) && isValidUserProfile(incoming()) && 
+      allow update: if isOwner(userId) && 
+                    // Immortality Guard for createdAt
                     incoming().createdAt == existing().createdAt &&
+                    // Only allow updating specific fields
                     incoming().diff(existing()).affectedKeys().hasOnly(['displayName']);
 
       // 2. Transactions Subcollection

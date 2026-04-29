@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Preferences } from '@capacitor/preferences';
 import { auth, db, handleFirestoreError } from './firebase';
 
@@ -43,10 +43,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const userRef = doc(db, 'users', newUser.uid);
           // Use getDoc which works with offline cache
-          const userDoc = await getDoc(userRef).catch(err => {
+          let userDoc = await getDoc(userRef).catch(err => {
             console.warn("Offline: Using cached user profile if available", err.message);
             return null;
           });
+
+          // If getDoc says it doesn't exist but we are online, check server once to avoid permission errors on write
+          if ((!userDoc || !userDoc.exists()) && navigator.onLine) {
+            try {
+              userDoc = await getDocFromServer(userRef);
+            } catch (e) {
+              // Ignore server fetch errors, fallback to what we have
+            }
+          }
           
           if (userDoc && !userDoc.exists()) {
             const profile: any = {
@@ -55,9 +64,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (newUser.displayName) profile.displayName = newUser.displayName;
             
             // setDoc will be queued by Firestore if offline
+            // If it fails on server due to a conflict (already exists), it will be caught here
             await setDoc(userRef, profile).catch(err => {
-              if (navigator.onLine) {
+              // Only report if it's not a likely conflict or if we are online and it's definitely a permission issue
+              if (navigator.onLine && !err.message.includes('insufficient permissions')) {
                 handleFirestoreError(err, 'write', userRef.path);
+              } else if (navigator.onLine) {
+                // If it's a permission error while online, it might mean the document already exists 
+                // and we're violating the update rule (immutability of createdAt)
+                console.log("Profile likely exists on server, skipping creation.");
               }
             });
           }

@@ -2,20 +2,32 @@ import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot, query, orderBy, where, Timestamp, limit } from 'firebase/firestore';
 import { db, Transaction } from '../firebase';
 import { useAuth } from '../AuthContext';
-import { TrendingUp, TrendingDown, Wallet, AlertCircle, BarChart3, UserCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, AlertCircle, BarChart3, UserCircle, Sparkles, RefreshCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { startOfDay, format, startOfMonth } from 'date-fns';
+import { analyzeTransactions, AiAnalysis } from '../services/aiService';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [txns, setTxns] = useState<Transaction[]>([]);
   const [stats, setStats] = useState({ sales: 0, expenses: 0, profit: 0, count: 0 });
   const [timeframe, setTimeframe] = useState<'today' | 'week' | 'month'>('today');
-
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  const [aiInsight, setAiInsight] = useState<AiAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const getAiInsight = async () => {
+    if (txns.length === 0 || isAnalyzing) return;
+    setIsAnalyzing(true);
+    const result = await analyzeTransactions(txns);
+    setAiInsight(result);
+    setIsAnalyzing(false);
+  };
 
   useEffect(() => {
     if (!user) return;
+    setAiInsight(null); // Clear old insights when switching timeframe
 
     let beginOfTime: Date;
     if (timeframe === 'today') {
@@ -164,6 +176,81 @@ export const Dashboard: React.FC = () => {
           <div className="card p-5 border-[#3D3935] bg-[#25221F]">
             <p className="text-[#6B6359] text-[10px] font-bold uppercase tracking-widest mb-2 text-center">Expenses</p>
             <p className="text-2xl font-bold text-red-400 font-display text-center truncate">GHS {stats.expenses.toFixed(0)}</p>
+          </div>
+        </div>
+
+        {/* AI Insight Section */}
+        <div className="card bg-[#1A1816] border-[#3D3935] p-6 relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-indigo-500/20 p-1.5 rounded-lg">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+              </div>
+              <h3 className="text-sm font-bold font-display text-[#F9F7F2] uppercase tracking-widest">Flow Insight AI</h3>
+            </div>
+            <button 
+              onClick={getAiInsight}
+              disabled={isAnalyzing || txns.length === 0}
+              className="p-1.5 hover:bg-[#3D3935] rounded-lg transition-colors text-[#6B6359] hover:text-[#F9F7F2] disabled:opacity-30"
+              title="Refresh Insights"
+            >
+              <RefreshCcw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {aiInsight ? (
+              <motion.div 
+                key="insight"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#25221F] p-3 rounded-xl border border-[#3D3935]/50">
+                    <p className="text-[9px] text-[#6B6359] font-bold uppercase tracking-widest mb-1">Total Spending</p>
+                    <p className="text-sm font-bold text-[#F9F7F2]">{aiInsight.totalSpending}</p>
+                  </div>
+                  <div className="bg-[#25221F] p-3 rounded-xl border border-[#3D3935]/50">
+                    <p className="text-[9px] text-[#6B6359] font-bold uppercase tracking-widest mb-1">Top Category</p>
+                    <p className="text-sm font-bold text-[#F9F7F2]">{aiInsight.topCategory}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Key Insight</p>
+                  <p className="text-sm text-[#D1CDC3] leading-relaxed italic border-l-2 border-indigo-500/30 pl-3">
+                    "{aiInsight.insight}"
+                  </p>
+                </div>
+                <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20">
+                  <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider mb-1">Recommendation</p>
+                  <p className="text-xs text-indigo-100 leading-relaxed font-medium">
+                    {aiInsight.recommendation}
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="placeholder"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-8 text-center"
+              >
+                <Sparkles className="w-8 h-8 text-[#3D3935] mx-auto mb-3 opacity-20" />
+                <p className="text-[11px] text-[#6B6359] font-bold uppercase tracking-widest mb-4">Ready to analyze your flow</p>
+                <button 
+                  onClick={getAiInsight}
+                  disabled={isAnalyzing || txns.length === 0}
+                  className="bg-[#F9F7F2] text-[#1A1816] px-6 py-2.5 rounded-full text-xs font-bold font-display hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isAnalyzing ? 'ANALYZING...' : 'GET AI FEEDBACK'}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <div className="absolute -right-2 -bottom-2 opacity-[0.02] pointer-events-none">
+            <Sparkles className="w-24 h-24 text-[#F9F7F2]" />
           </div>
         </div>
       </div>
