@@ -12,6 +12,17 @@ export interface AiAnalysis {
 export const analyzeTransactions = async (transactions: any[]): Promise<AiAnalysis | null> => {
   if (transactions.length === 0) return null;
 
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "") {
+    console.error("Gemini API Key is not configured.");
+    return {
+      totalSpending: "N/A",
+      topCategory: "N/A",
+      insight: "AI Analysis is currently unavailable. Please configure the API Key.",
+      recommendation: "Check your Vercel Environment Variables."
+    };
+  }
+
   const transactionList = transactions
     .map(t => `* ${t.category}: ${t.amount} (${t.type})`)
     .join('\n');

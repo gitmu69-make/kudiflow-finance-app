@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
+        includeAssets: ['icon.svg'],
         manifest: {
           name: 'KudiFlow',
           short_name: 'KudiFlow',
@@ -57,7 +57,7 @@ export default defineConfig(({mode}) => {
       })
     ],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
     },
     resolve: {
       alias: {
