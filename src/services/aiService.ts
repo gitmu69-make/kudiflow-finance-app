@@ -1,7 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export interface AiAnalysis {
   totalSpending: string;
   topCategory: string;
@@ -11,17 +7,6 @@ export interface AiAnalysis {
 
 export const analyzeTransactions = async (transactions: any[]): Promise<AiAnalysis | null> => {
   if (transactions.length === 0) return null;
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "") {
-    console.error("Gemini API Key is not configured.");
-    return {
-      totalSpending: "N/A",
-      topCategory: "N/A",
-      insight: "AI Analysis is currently unavailable. Please configure the API Key.",
-      recommendation: "Check your Vercel Environment Variables."
-    };
-  }
 
   const transactionList = transactions
     .map(t => `* ${t.category}: ${t.amount} (${t.type})`)
@@ -55,20 +40,27 @@ ${transactionList}
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
+    const response = await fetch("/api/ai/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({ prompt }),
     });
 
-    const text = response.text;
-    if (!text) return null;
-    
-    return JSON.parse(text) as AiAnalysis;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to analyze transactions");
+    }
+
+    return await response.json() as AiAnalysis;
   } catch (error) {
     console.error("AI Analysis failed:", error);
-    return null;
+    return {
+      totalSpending: "N/A",
+      topCategory: "N/A",
+      insight: "AI Analysis is temporarily unavailable.",
+      recommendation: "Please try again later."
+    };
   }
 };

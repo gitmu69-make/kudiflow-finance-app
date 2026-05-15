@@ -1,0 +1,23 @@
+[package]
+name = "kudiflow"
+version = "0.1.3"
+description = "Financial management for small businesses"
+license = "MIT"
+
+[[module]]
+name = "server"
+source = "."
+abi = "wasi"
+
+[[command]]
+name = "run"
+module = "server"
+runner = "https://wasmer.io/runners/node"
+
+[scripts]
+build = "npm install && npm run build"
+start = "node dist/server.cjs"
+
+[env]
+NODE_ENV = "production"
+# Add other env vars here
