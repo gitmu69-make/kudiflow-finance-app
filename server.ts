@@ -25,7 +25,7 @@ app.post("/api/ai/analyze", async (req, res) => {
     
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "MY_GEMINI_API_KEY") {
       return res.status(500).json({ 
-        error: "Gemini API Key is not configured on the server." 
+        error: "Gemini API Key is not configured. Please add your key to the 'Secrets' or 'Environment Variables' section in the AI Studio Settings." 
       });
     }
 
