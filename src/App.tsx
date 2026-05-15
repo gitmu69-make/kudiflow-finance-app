@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
-import { signIn, auth, signInAsGuest, logout } from './firebase';
+import { signIn, auth, signInAsGuest, logout, signInWithEmail, signUpWithEmail } from './firebase';
 import { Dashboard } from './components/Dashboard';
 import { TransactionForm } from './components/TransactionForm';
-import { BarChart3, Plus, LogOut, ArrowLeft, Smartphone, ShieldCheck, WifiOff, UserCircle, Download } from 'lucide-react';
+import { BarChart3, Plus, LogOut, ArrowLeft, Smartphone, ShieldCheck, WifiOff, UserCircle, Download, Mail, Lock, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -20,6 +20,12 @@ const AppContent: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'add'>('dashboard');
   const [authError, setAuthError] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  
+  // Email Auth State
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'select'>('select');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -73,6 +79,35 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setAuthError(null);
+    setIsSubmitting(true);
+    try {
+      if (authMode === 'login') {
+        await signInWithEmail(email, password);
+      } else {
+        await signUpWithEmail(email, password);
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setAuthError("Invalid email or password.");
+      } else if (err.code === 'auth/email-already-in-use') {
+        setAuthError("This email is already registered. Try logging in.");
+      } else if (err.code === 'auth/weak-password') {
+        setAuthError("Password should be at least 6 characters.");
+      } else if (err.code === 'auth/invalid-email') {
+        setAuthError("Please enter a valid email address.");
+      } else {
+        setAuthError(err.message || "Authentication failed.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -89,21 +124,21 @@ const AppContent: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#1A1816] flex flex-col items-center justify-center p-8 text-center">
+      <div className="min-h-screen bg-[#1A1816] flex flex-col items-center justify-center p-6 sm:p-8 text-center overflow-y-auto">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#F9F7F2] p-8 rounded-[3rem] mb-10 shadow-2xl"
+          className="bg-[#F9F7F2] p-6 rounded-[2.5rem] mb-8 shadow-2xl relative"
         >
-          <BarChart3 className="w-16 h-16 text-[#1A1816]" />
+          <BarChart3 className="w-12 h-12 text-[#1A1816]" />
         </motion.div>
-        <h1 className="text-5xl font-bold mb-4 tracking-tight font-display text-[#F9F7F2]">KudiFlow</h1>
-        <p className="text-lg text-[#D1CDC3] mb-12 max-w-xs font-display">
+        <h1 className="text-4xl font-bold mb-3 tracking-tight font-display text-[#F9F7F2]">KudiFlow</h1>
+        <p className="text-base text-[#D1CDC3] mb-8 max-w-xs font-display">
           Empowering small businesses with clarity. Track your daily flow and watch your profit grow.
         </p>
         
-        <div className="w-full max-w-sm space-y-6">
-          {installPrompt && (
+        <div className="w-full max-w-sm space-y-5">
+          {installPrompt && authMode === 'select' && (
             <button 
               onClick={handleInstall}
               className="w-full flex items-center justify-center gap-4 py-4 px-6 rounded-[2rem] bg-indigo-600 text-white font-bold text-lg hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20"
@@ -113,26 +148,117 @@ const AppContent: React.FC = () => {
             </button>
           )}
 
-          <button 
-            onClick={handleGoogleSignIn}
-            className="btn-primary w-full flex items-center justify-center gap-4 py-5 text-xl font-bold"
-          >
-            <Smartphone className="w-6 h-6" />
-            Get Started
-          </button>
-          
-          <div className="w-full space-y-3">
-            <button 
-              onClick={handleGuestSignIn}
-              className="btn-secondary w-full flex items-center justify-center gap-4 py-5 text-xl font-bold border-none"
-            >
-              <UserCircle className="w-6 h-6" />
-              Continue as Guest
-            </button>
-            <p className="text-xs text-[#A89F91] font-display">
-              Try KudiFlow instantly without an account. Your data stays on this device.
-            </p>
-          </div>
+          <AnimatePresence mode="wait">
+            {authMode === 'select' ? (
+              <motion.div 
+                key="select"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="space-y-4"
+              >
+                <button 
+                  onClick={() => setAuthMode('login')}
+                  className="btn-primary w-full flex items-center justify-center gap-4 py-4 text-lg font-bold"
+                >
+                  <Mail className="w-5 h-5" />
+                  Continue with Email
+                </button>
+
+                <button 
+                  onClick={handleGoogleSignIn}
+                  className="w-full flex items-center justify-center gap-4 py-4 text-lg font-bold bg-white text-black hover:bg-neutral-100 transition-colors rounded-[2rem]"
+                >
+                  <Smartphone className="w-5 h-5" />
+                  Sign in with Google
+                </button>
+                
+                <div className="w-full space-y-3 pt-2">
+                  <button 
+                    onClick={handleGuestSignIn}
+                    className="btn-secondary w-full flex items-center justify-center gap-4 py-4 text-lg font-bold border-none"
+                  >
+                    <UserCircle className="w-5 h-5" />
+                    Continue as Guest
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-[#25221F] p-6 rounded-[2.5rem] border border-[#3D3935] shadow-2xl text-left"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <button 
+                    onClick={() => { setAuthMode('select'); setAuthError(null); }}
+                    className="p-2 hover:bg-[#3D3935] rounded-xl transition-colors text-[#A89F91]"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <h2 className="text-xl font-bold text-[#F9F7F2] font-display">
+                    {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
+                  </h2>
+                </div>
+
+                <form onSubmit={handleEmailAuth} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[#6B6359] uppercase ml-1">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6359]" />
+                      <input 
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="your@email.com"
+                        className="w-full bg-[#1A1816] text-[#F9F7F2] pl-11 pr-4 py-3 rounded-2xl border border-[#3D3935] outline-none focus:border-indigo-500 transition-colors text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[#6B6359] uppercase ml-1">Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6359]" />
+                      <input 
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-[#1A1816] text-[#F9F7F2] pl-11 pr-4 py-3 rounded-2xl border border-[#3D3935] outline-none focus:border-indigo-500 transition-colors text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full btn-primary py-4 mt-4 font-bold flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      authMode === 'login' ? 'Sign In' : 'Sign Up'
+                    )}
+                  </button>
+
+                  <div className="pt-2 text-center">
+                    <button 
+                      type="button"
+                      onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+                      className="text-xs text-indigo-400 font-medium hover:text-indigo-300"
+                    >
+                      {authMode === 'login' ? "Don't have an account? Sign up" : "Already have an account? Log in"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {authError && (

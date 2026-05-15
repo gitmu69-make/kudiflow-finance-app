@@ -4,6 +4,8 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signInAnonymously,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut
 } from 'firebase/auth';
 import { 
@@ -51,6 +53,18 @@ export const signInAsGuest = async () => {
   const currentAuth = getAuth();
   if (!currentAuth) throw new Error("Firebase Auth not found");
   return signInAnonymously(currentAuth);
+};
+
+export const signUpWithEmail = async (email: string, pass: string) => {
+  const currentAuth = getAuth();
+  if (!currentAuth) throw new Error("Firebase Auth not found");
+  return createUserWithEmailAndPassword(currentAuth, email, pass);
+};
+
+export const signInWithEmail = async (email: string, pass: string) => {
+  const currentAuth = getAuth();
+  if (!currentAuth) throw new Error("Firebase Auth not found");
+  return signInWithEmailAndPassword(currentAuth, email, pass);
 };
 
 export const logout = async () => {
