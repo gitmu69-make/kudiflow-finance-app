@@ -12,11 +12,13 @@ export const TransactionForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !amount) return;
 
+    setErrorMessage(null);
     setIsSubmitting(true);
     try {
       const txnData = {
@@ -33,8 +35,10 @@ export const TransactionForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess
       setCategory('');
       setNote('');
       onSuccess();
-    } catch (error) {
-      handleFirestoreError(error, 'create', `users/${user.uid}/transactions`);
+    } catch (error: any) {
+      const errorInfo = handleFirestoreError(error, 'create', `users/${user.uid}/transactions`);
+      console.error('Firestore write error:', errorInfo);
+      setErrorMessage(errorInfo.error);
     } finally {
       setIsSubmitting(false);
     }
@@ -112,6 +116,12 @@ export const TransactionForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess
           {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin text-[#1A1816]" /> : <Plus className="w-6 h-6 text-[#1A1816]" />}
           <span className="font-display font-bold">Log this Transaction</span>
         </button>
+
+        {errorMessage && (
+          <div className="mt-4 rounded-2xl border border-red-900/40 bg-red-950/20 p-4 text-sm text-red-200">
+            {errorMessage}
+          </div>
+        )}
       </form>
     </div>
   );

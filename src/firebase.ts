@@ -102,7 +102,7 @@ export interface FirestoreErrorInfo {
   }
 }
 
-export function handleFirestoreError(error: any, operationType: FirestoreErrorInfo['operationType'], path: string | null = null): never {
+export function handleFirestoreError(error: any, operationType: FirestoreErrorInfo['operationType'], path: string | null = null): FirestoreErrorInfo {
   const authInfo = auth.currentUser ? {
     userId: auth.currentUser.uid,
     email: auth.currentUser.email || '',
@@ -124,5 +124,5 @@ export function handleFirestoreError(error: any, operationType: FirestoreErrorIn
     authInfo
   };
 
-  throw new Error(JSON.stringify(errorInfo));
+  return errorInfo;
 }

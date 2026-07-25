@@ -19,29 +19,53 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.post("/api/ai/analyze", async (req, res) => {
+app.post('/api/ai/analyze', async (req, res) => {
   try {
     const { prompt } = req.body;
-    
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "MY_GEMINI_API_KEY") {
+    if (!prompt) {
+      return res.status(400).json({ error: 'Missing prompt in request body.' });
+    }
+
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'MY_GEMINI_API_KEY') {
       return res.status(500).json({ 
         error: "Gemini API Key is not configured. Please add your key to the 'Secrets' or 'Environment Variables' section in the AI Studio Settings." 
       });
     }
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash", 
-      generationConfig: { responseMimeType: "application/json" } 
+      model: 'gemini-1.5-flash', 
+      generationConfig: { responseMimeType: 'application/json' } 
     });
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    
-    res.json(JSON.parse(text));
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('AI response was not valid JSON.');
+      }
+      parsed = JSON.parse(jsonMatch[0]);
+    }
+
+    const { totalSpending, topCategory, insight, recommendation } = parsed;
+    if (
+      typeof totalSpending !== 'string' ||
+      typeof topCategory !== 'string' ||
+      typeof insight !== 'string' ||
+      typeof recommendation !== 'string'
+    ) {
+      throw new Error('AI response does not contain the required analysis fields.');
+    }
+
+    res.json({ totalSpending, topCategory, insight, recommendation });
   } catch (error: any) {
-    console.error("AI Analysis error:", error);
-    res.status(500).json({ error: error.message || "Failed to analyze transactions" });
+    console.error('AI Analysis error:', error);
+    res.status(500).json({ error: error.message || 'Failed to analyze transactions' });
   }
 });
 
