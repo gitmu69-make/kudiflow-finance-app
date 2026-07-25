@@ -94,7 +94,8 @@ ${transactionList}
       totalSpending: 'N/A',
       topCategory: 'N/A',
       insight: 'AI Analysis is temporarily unavailable.',
-      recommendation: 'Please try again later.'
+      recommendation: 'Please try again later.',
+      error: error?.message || 'Unknown AI service error.'
     };
   }
 };

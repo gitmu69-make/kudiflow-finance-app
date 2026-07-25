@@ -15,19 +15,22 @@ export const Dashboard: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   
   const [aiInsight, setAiInsight] = useState<AiAnalysis | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-
+  
   const getAiInsight = async () => {
     if (txns.length === 0 || isAnalyzing) return;
     setIsAnalyzing(true);
     const result = await analyzeTransactions(txns);
     setAiInsight(result);
+    setAiError(result?.error ?? null);
     setIsAnalyzing(false);
   };
 
   useEffect(() => {
     if (!user) return;
     setAiInsight(null); // Clear old insights when switching timeframe
+    setAiError(null);
 
     let beginOfTime: Date;
     if (timeframe === 'today') {
@@ -248,7 +251,13 @@ export const Dashboard: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-          
+
+          {aiError && (
+            <div className="mt-4 rounded-2xl border border-red-900/40 bg-red-950/20 p-4 text-sm text-red-200">
+              AI feedback failed: {aiError}
+            </div>
+          )}
+
           <div className="absolute -right-2 -bottom-2 opacity-[0.02] pointer-events-none">
             <Sparkles className="w-24 h-24 text-[#F9F7F2]" />
           </div>
