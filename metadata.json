@@ -2,5 +2,7 @@
   "name": "KudiFlow",
   "description": "A lightweight, mobile-first cashflow tracking app for small businesses. Track income, expenses, and daily profit with ease.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

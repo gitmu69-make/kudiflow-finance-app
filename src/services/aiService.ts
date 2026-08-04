@@ -5,44 +5,22 @@ export interface AiAnalysis {
   recommendation: string;
 }
 
-const safeParseAIResponse = (text: string): any => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('AI response was not valid JSON');
-    }
-    return JSON.parse(jsonMatch[0]);
-  }
-};
-
-const isValidAiAnalysis = (result: any): result is AiAnalysis => {
-  return (
-    result &&
-    typeof result.totalSpending === 'string' &&
-    typeof result.topCategory === 'string' &&
-    typeof result.insight === 'string' &&
-    typeof result.recommendation === 'string'
-  );
-};
-
 export const analyzeTransactions = async (transactions: any[]): Promise<AiAnalysis | null> => {
   if (transactions.length === 0) return null;
 
   const transactionList = transactions
-    .map(t => `* ${t.category || 'General'}: GHS ${t.amount.toFixed(2)} (${t.type})`)
+    .map(t => `* ${t.category}: ${t.amount} (${t.type})`)
     .join('\n');
 
-  const prompt = `You are a friendly financial assistant inside KudiFlow.
+  const prompt = `You are a financial assistant inside KudiFlow.
 
-Your task is to analyze a user's recent transactions and give simple, practical feedback.
+Your task is to analyze a user's transactions and give simple, practical feedback.
 
 INPUT:
-* A list of transactions with amount, category, and type
+* A list of transactions (amount, category, date optional)
 
 OUTPUT FORMAT:
-Return only valid JSON with these exact keys and no extra text:
+Return a JSON object with strictly these keys:
 {
   "totalSpending": "string",
   "topCategory": "string",
@@ -51,51 +29,56 @@ Return only valid JSON with these exact keys and no extra text:
 }
 
 RULES:
-* Be short and clear (max 80-100 words total)
+* Be short and clear (max 80–100 words in total)
 * Do NOT use complex financial terms
 * Do NOT guess missing data
-* Focus only on the transactions provided
-* Use the exact totals from the list
+* Focus only on what is given
+* Give advice that is realistic for everyday users
 
 Transactions:
 ${transactionList}
 `;
 
   try {
-    const response = await fetch('/api/ai/analyze', {
-      method: 'POST',
+    const response = await fetch("/api/ai/analyze", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ prompt }),
     });
 
-    const responseText = await response.text();
     if (!response.ok) {
-      let errorMessage = 'Failed to analyze transactions';
-      try {
-        const errorData = JSON.parse(responseText);
-        if (errorData?.error) errorMessage = errorData.error;
-      } catch {
-        // ignore parse errors
-      }
-      throw new Error(errorMessage);
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to analyze transactions");
     }
 
-    const result = safeParseAIResponse(responseText);
-    if (!isValidAiAnalysis(result)) {
-      throw new Error('AI returned an invalid analysis format.');
-    }
-
-    return result;
+    return await response.json() as AiAnalysis;
   } catch (error: any) {
-    console.error('AI Analysis failed:', error);
+    const errorMsg = error?.message || String(error);
+    const isApiKeyError = errorMsg.includes("API Key") || 
+                          errorMsg.includes("API key") || 
+                          errorMsg.includes("key is invalid") || 
+                          errorMsg.includes("Key is invalid") ||
+                          errorMsg.includes("INVALID_ARGUMENT") ||
+                          errorMsg.includes("API_KEY_INVALID");
+    
+    if (isApiKeyError) {
+      console.warn("AI Analysis Configuration Notice:", errorMsg);
+      return {
+        totalSpending: "N/A",
+        topCategory: "N/A",
+        insight: "Gemini API Key is not configured or is invalid.",
+        recommendation: "Please verify or set up a valid Gemini API Key in your AI Studio Settings (the gear icon at the bottom left) to unlock active cashflow insights."
+      };
+    }
+
+    console.error("AI Analysis failed:", error);
     return {
-      totalSpending: 'N/A',
-      topCategory: 'N/A',
-      insight: 'AI Analysis is temporarily unavailable.',
-      recommendation: 'Please try again later.',
-      error: error?.message || 'Unknown AI service error.'
+      totalSpending: "N/A",
+      topCategory: "N/A",
+      insight: "AI Analysis is temporarily unavailable.",
+      recommendation: "Please try again later."
     };
   }
 };
